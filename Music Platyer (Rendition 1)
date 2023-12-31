@@ -1,0 +1,113 @@
+import pygame
+import os
+from tkinter import Tk, filedialog, Label, Button, Scale, StringVar, messagebox
+from ttkthemes import ThemedTk
+from tkinter import ttk
+
+class MusicPlayer:
+    def __init__(self):
+        pygame.init()
+        self.window = ThemedTk(theme="equilux")  # Using ttkthemes for a better-looking UI
+        self.window.title("Music Player")
+
+        self.playlist = []
+        self.current_track = 0
+
+        self.create_gui()
+        self.load_playlist()
+        self.play_track()
+
+        self.window.mainloop()
+
+    def create_gui(self):
+        # Create buttons
+        self.play_button = self.create_button("Play", self.play)
+        self.pause_button = self.create_button("Pause", self.pause)
+        self.stop_button = self.create_button("Stop", self.stop)
+        self.next_button = self.create_button("Next", self.next_track)
+        self.prev_button = self.create_button("Previous", self.prev_track)
+
+        # Create labels
+        self.track_label = self.create_label("")
+        self.volume_label = self.create_label("Volume:")
+
+        # Create volume control
+        self.volume_var = StringVar()
+        self.volume_slider = Scale(self.window, from_=0, to=100, orient="horizontal", variable=self.volume_var,
+                                   command=self.update_volume)
+        self.volume_slider.set(70)  # Set default volume
+        self.volume_slider.pack()
+
+        # Create progress bar
+        self.progress_var = DoubleVar()
+        self.progress_bar = ttk.Progressbar(self.window, orient="horizontal", length=300, mode="determinate",
+                                            variable=self.progress_var)
+        self.progress_bar.pack(pady=10)
+
+    def create_button(self, text, command):
+        button = Button(self.window, text=text, command=command)
+        button.pack(side="left", padx=5, pady=5)
+        return button
+
+    def create_label(self, text):
+        label = Label(self.window, text=text, font=("Helvetica", 10))
+        label.pack(pady=5)
+        return label
+
+    def load_playlist(self):
+        directory = filedialog.askdirectory(title="Select Music Directory")
+        if directory:
+            self.playlist = [os.path.join(directory, file) for file in os.listdir(directory) if file.endswith(".mp3")]
+            if not self.playlist:
+                messagebox.showinfo("No MP3 Files", "No MP3 files found in the selected directory.")
+                self.window.destroy()
+
+    def play_track(self):
+        if self.playlist:
+            pygame.mixer.music.load(self.playlist[self.current_track])
+            pygame.mixer.music.play()
+            self.update_track_label()
+            self.update_progress_bar()
+
+    def update_track_label(self):
+        track_name = os.path.basename(self.playlist[self.current_track])
+        self.track_label.config(text="Now Playing: " + track_name)
+
+    def update_volume(self, *_):
+        volume = int(self.volume_var.get())
+        pygame.mixer.music.set_volume(volume / 100.0)
+
+    def update_progress_bar(self):
+        def update():
+            while pygame.mixer.music.get_busy():
+                current_time = pygame.mixer.music.get_pos() / 1000.0
+                total_time = pygame.mixer.Sound(self.playlist[self.current_track]).get_length()
+                progress_percentage = (current_time / total_time) * 100
+                self.progress_var.set(progress_percentage)
+                self.window.update_idletasks()
+
+        # Start a separate thread to update the progress bar
+        threading.Thread(target=update).start()
+
+    def play(self):
+        pygame.mixer.music.unpause()
+
+    def pause(self):
+        pygame.mixer.music.pause()
+
+    def stop(self):
+        pygame.mixer.music.stop()
+
+    def next_track(self):
+        if self.playlist:
+            self.current_track = (self.current_track + 1) % len(self.playlist)
+            self.play_track()
+
+    def prev_track(self):
+        if self.playlist:
+            self.current_track = (self.current_track - 1) % len(self.playlist)
+            self.play_track()
+
+
+if __name__ == "__main__":
+    MusicPlayer()
