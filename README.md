@@ -1,2 +1,3 @@
-# Music-Player-Py
-It's no Spotify but I try.
+# Music-Player-Py 
+
+~It's no Spotify but I try.
